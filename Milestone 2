@@ -1,0 +1,342 @@
+import java.io.*;
+import java.util.*;
+import java.text.SimpleDateFormat;
+
+public class Milestone {
+    static class MotorphInventory {
+        String dateEntered, stockLabel, brand, engineNumber, status, warehouseLocation, maintenanceStatus;
+        String dateManufactured, model, lastUpdated;
+
+        // initialize items 
+        MotorphInventory(String d, String s, String b, String e, String st, String w, String m, String dm, String mo, String lu) {
+            dateEntered = d;
+            stockLabel = s;
+            brand = b;
+            engineNumber = e;
+            status = st;
+            warehouseLocation = w;
+            maintenanceStatus = m;
+            dateManufactured = dm;
+            model = mo;
+            lastUpdated = lu;
+        }
+
+        // Return a string
+        public String toString() {
+            return String.join(", ", dateEntered, stockLabel, brand, engineNumber, status, warehouseLocation, maintenanceStatus, dateManufactured, model, lastUpdated);
+        }
+
+        // Compare engine numbers (for sorting and binary search)
+        public static int compareByEngineNumber(MotorphInventory a, MotorphInventory b) {
+            return a.engineNumber.compareTo(b.engineNumber);
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        // Read inventory data from CSV file
+        ArrayList<MotorphInventory> inventory = readCSV("C:\\Users\\Christine\\Downloads\\MotorPH Inventory Data - March 2023 Inventory Data.csv");
+        Scanner scanner = new Scanner(System.in);
+
+        Collections.sort(inventory, MotorphInventory::compareByEngineNumber);
+
+        // Main menu loop
+        while (true) {
+            System.out.println("\nMenu:");
+            System.out.println("1. Add Item");
+            System.out.println("2. Delete Item");
+            System.out.println("3. Sort Stocks by Brand");
+            System.out.println("4. Search Inventory");
+            System.out.println("5. Modify Item");
+            System.out.println("6. Exit");
+            System.out.print("Choose an option (1-6): ");
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume the newline character
+
+            // Handle user choice
+            switch (choice) {
+                case 1: addItem(inventory, scanner); break;
+                case 2: deleteItem(inventory, scanner); break;
+                case 3: sortByBrand(inventory, scanner); break;
+                case 4: searchInventory(inventory, scanner); break;
+                case 5: modifyItem(inventory, scanner); break; // Modify option
+                case 6:
+                    // Write inventory data back to CSV
+                    writeCSV("C:\\Users\\Christine\\Downloads\\MotorPH Inventory Data - March 2023 Inventory Data.csv", inventory);
+                    System.out.println("Exiting program...");
+                    return;
+                default: System.out.println("Invalid choice. Try again.");
+            }
+        }
+    }
+
+    // Read inventory data
+    private static ArrayList<MotorphInventory> readCSV(String filename) throws IOException {
+        ArrayList<MotorphInventory> inventory = new ArrayList<>();
+        BufferedReader br = new BufferedReader(new FileReader(filename));
+        br.readLine(); // Skip header
+        String line;
+        
+        // Create MotorphInventory objects
+        while ((line = br.readLine()) != null) {
+            String[] data = line.split(",");
+            if (data.length == 10) inventory.add(new MotorphInventory(data[0], data[1], data[2], data[3], data[4], data[5], data[6], data[7], data[8], data[9]));
+        }
+        br.close();
+        return inventory;
+    }
+
+    // Write inventory data
+    private static void writeCSV(String filename, ArrayList<MotorphInventory> inventory) throws IOException {
+        BufferedWriter bw = new BufferedWriter(new FileWriter(filename));
+        bw.write("Date, Label, Brand, Engine Number, Status, Warehouse Location, Maintenance Status, Date Manufactured, Model, Last Updated\n");
+
+        for (MotorphInventory item : inventory) {
+            bw.write(item.toString() + "\n");
+        }
+        bw.close();
+    }
+
+    // Method to modify
+    private static void modifyItem(ArrayList<MotorphInventory> inventory, Scanner scanner) {
+    System.out.print("Enter Engine Number of the item you want to modify: ");
+    String engineNumber = scanner.nextLine();
+
+    int index = binarySearch(inventory, engineNumber);
+
+    if (index == -1) {
+        System.out.println("Item with engine number '" + engineNumber + "' not found.");
+        return;
+    }
+
+    MotorphInventory itemToModify = inventory.get(index);
+
+    System.out.println("Item found: ");
+    System.out.println(itemToModify);
+
+    System.out.println("What would you like to modify?");
+    System.out.println("1. Stock Label");
+    System.out.println("2. Status");
+    System.out.println("3. Maintenance Status");
+    System.out.print("Choose an option (1-3): ");
+    int choice = scanner.nextInt();
+    scanner.nextLine();
+
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String lastUpdated = sdf.format(new Date()); // Update last updated time
+
+    switch (choice) {
+        case 1:
+            System.out.print("Enter new Stock Label: ");
+            String newStockLabel = scanner.nextLine();
+            itemToModify.stockLabel = newStockLabel;
+            break;
+        case 2:
+            System.out.print("Enter new Status: ");
+            String newStatus = scanner.nextLine();
+            itemToModify.status = newStatus;
+            break;
+        case 3:
+            System.out.print("Enter new Maintenance Status (1 - Completed, 2 - In Progress, 3 - Failed - Defective): ");
+            int maintenanceChoice = scanner.nextInt();
+            scanner.nextLine();
+            String maintenanceStatus = "";
+            switch (maintenanceChoice) {
+                case 1: 
+                    maintenanceStatus = "Completed"; 
+                    break;
+                case 2: 
+                    maintenanceStatus = "In Progress"; 
+                    break;
+                case 3: 
+                    maintenanceStatus = "Failed - Defective"; 
+                    break;
+                default: 
+                    System.out.println("Invalid choice, defaulting to 'In Progress'.");
+                    maintenanceStatus = "In Progress"; 
+                    break;
+            }
+            itemToModify.maintenanceStatus = maintenanceStatus; // Set the new status
+            break;
+        default:
+            System.out.println("Invalid option.");
+            return;
+    }
+
+    // Update the Last Updated field
+    itemToModify.lastUpdated = lastUpdated;
+
+    System.out.println("Item modified successfully.");
+    System.out.println("Updated item: ");
+    System.out.println(itemToModify);
+}
+
+    // Binary Search for engine number
+    private static int binarySearch(ArrayList<MotorphInventory> inventory, String engineNumber) {
+        int low = 0;
+        int high = inventory.size() - 1;
+
+        while (low <= high) {
+            int mid = (low + high) / 2;
+            MotorphInventory midItem = inventory.get(mid);
+
+            int comparison = midItem.engineNumber.compareTo(engineNumber);
+
+            if (comparison == 0) {
+                return mid; // Engine number found
+            } else if (comparison < 0) {
+                low = mid + 1;
+            } else {
+                high = mid - 1;
+            }
+        }
+        return -1; // Engine number not found
+    }
+
+    // Method to add a new item to the inventory
+private static void addItem(ArrayList<MotorphInventory> inventory, Scanner scanner) {
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+    String date = sdf.format(new Date());
+    
+    String stockLabel = "new";
+    String status = "on-hand";
+    
+    String maintenanceStatus = "Completed";
+    
+    System.out.print("Enter Stock Brand: ");
+    String brand = scanner.nextLine();
+    System.out.print("Enter Engine Number: ");
+    String engineNumber = scanner.nextLine();
+
+    // Check if the engine number already exists in the inventory
+    for (MotorphInventory item : inventory) {
+        if (item.engineNumber.equals(engineNumber)) {
+            System.out.println("Error: Engine Number already exists in the inventory.");
+            return;
+        }
+    }
+
+    System.out.print("Enter Warehouse Location: ");
+    String warehouseLocation = scanner.nextLine();
+    
+    System.out.print("Enter Date Manufactured (yyyy-MM-dd): ");
+    String dateManufactured = scanner.nextLine();
+
+    System.out.print("Enter Model: ");
+    String model = scanner.nextLine();
+
+    // Update the Last Updated field with the current timestamp
+    String lastUpdated = sdf.format(new Date());
+
+    MotorphInventory newItem = new MotorphInventory(date, stockLabel, brand, engineNumber, status, warehouseLocation, maintenanceStatus, dateManufactured, model, lastUpdated);
+
+    System.out.println("\nYou are about to add the following item:");
+    System.out.println(newItem);
+    System.out.print("Do you want to confirm adding this item? (yes/no): ");
+    String confirmation = scanner.nextLine();
+
+    if (confirmation.equalsIgnoreCase("yes")) {
+        inventory.add(newItem);
+        System.out.println("Stock added successfully.");
+    } else {
+        System.out.println("Item not added.");
+    }
+}
+ // Method to delete an item
+    private static void deleteItem(ArrayList<MotorphInventory> inventory, Scanner scanner) {
+        System.out.print("Enter Engine Number to delete: ");
+        String engineNumber = scanner.nextLine();
+
+        boolean removed = false;
+        Iterator<MotorphInventory> iterator = inventory.iterator();
+
+        while (iterator.hasNext()) {
+            MotorphInventory item = iterator.next();
+            if (item.engineNumber.equals(engineNumber)) {
+  
+                System.out.println("\nYou are about to delete the following item:");
+                System.out.println(item);
+                System.out.print("Do you want to confirm deleting this item? (yes/no): ");
+                String confirmation = scanner.nextLine();
+
+                if (confirmation.equalsIgnoreCase("yes")) {
+
+                    if (item.stockLabel.equalsIgnoreCase("old") && item.status.equalsIgnoreCase("sold")) {
+                        iterator.remove();
+                        removed = true;
+                        System.out.println("Stock deleted successfully.");
+                    } else {
+                        System.out.println("Error: Item is not old or sold, cannot delete.");
+                    }
+                } else {
+                    System.out.println("Item not deleted.");
+                }
+                break;
+            }
+        }
+
+        if (!removed) {
+            System.out.println("Error: Item with engine number '" + engineNumber + "' not found or cannot be deleted.");
+        }
+    }
+    private static void sortByBrand(ArrayList<MotorphInventory> inventory, Scanner scanner) {
+        System.out.print("Choose sorting order (1 for Ascending, 2 for Descending): ");
+        int order = scanner.nextInt();
+        scanner.nextLine();
+
+        int n = inventory.size();
+        
+        for (int i = 0; i < n - 1; i++) {
+            for (int j = 0; j < n - 1 - i; j++) {
+                MotorphInventory current = inventory.get(j);
+                MotorphInventory next = inventory.get(j + 1);
+                
+                int comparisonResult = current.brand.compareTo(next.brand);
+                
+                if ((order == 1 && comparisonResult > 0) || (order == 2 && comparisonResult < 0)) {
+                   
+                    inventory.set(j, next);
+                    inventory.set(j + 1, current);
+                }
+            }
+        }
+
+        inventory.forEach(System.out::println);
+    }
+
+    // Method to search for items
+    private static void searchInventory(ArrayList<MotorphInventory> inventory, Scanner scanner) {
+        System.out.print("Search by (1.Date, 2.Label, 3.Brand, 4.Engine, 5.Status, 6.Warehouse Location, 7.Maintenance Status, 8.Model, 9.Date Manufactured): ");
+        int criterion = scanner.nextInt();
+        scanner.nextLine();
+
+        System.out.print("Enter search value: ");
+        String searchValue = scanner.nextLine();
+        
+        List<MotorphInventory> results = new ArrayList<>();
+        
+        for (MotorphInventory stock : inventory) {
+            boolean matches = false;
+            switch (criterion) {
+                case 1: matches = stock.dateEntered.contains(searchValue); break;
+                case 2: matches = stock.stockLabel.contains(searchValue); break;
+                case 3: matches = stock.brand.contains(searchValue); break;
+                case 4: matches = stock.engineNumber.contains(searchValue); break;
+                case 5: matches = stock.status.contains(searchValue); break;
+                case 6: matches = stock.warehouseLocation.contains(searchValue); break;
+                case 7: matches = stock.maintenanceStatus.contains(searchValue); break;
+                case 8: matches = stock.model.contains(searchValue); break;
+                case 9: matches = stock.dateManufactured.contains(searchValue); break;
+                default: break;
+            }
+            if (matches) {
+                results.add(stock);
+            }
+        }
+
+        if (results.isEmpty()) {
+            System.out.println("No matching items found.");
+        } else {
+            results.forEach(System.out::println);
+        }
+    }
+}
